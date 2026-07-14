@@ -1,0 +1,39 @@
+-- ═══════════════════════════════════════
+-- 👑 SKEITIKADMIN HUB
+-- ═══════════════════════════════════════
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local whitelist = {
+    "SkeitikAdmin"
+}
+
+local allowed = false
+for _, name in ipairs(whitelist) do
+    if player.Name:lower() == name:lower() then
+        allowed = true
+        break
+    end
+end
+
+if not allowed then
+    warn("[Hub] Access Denied: " .. player.Name)
+    return
+end
+
+print("[Hub] Welcome " .. player.Name)
+
+-- ═══════════════════════════════════════
+-- СКРИПТ: WalkSpeed = 40
+-- ═══════════════════════════════════════
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+humanoid.WalkSpeed = 40
+
+player.CharacterAdded:Connect(function(char)
+    local h = char:WaitForChild("Humanoid")
+    h.WalkSpeed = 40
+end)
