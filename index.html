@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>.</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;min-height:100vh;overflow:hidden;font-family:'Courier New',monospace}
+.admin{display:none;padding:25px;color:#0f0;max-width:950px;margin:0 auto;animation:fade .4s}
+@keyframes fade{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+h2{color:#00ffaa;text-shadow:0 0 15px #00ffaa;margin-bottom:20px;font-size:24px}
+h3{color:#00ffaa;margin:15px 0 10px 0;font-size:16px}
+textarea{width:100%;height:320px;background:#0a0a0a;color:#0f0;border:1px solid #00ffaa;padding:12px;font-family:'Courier New',monospace;font-size:13px;resize:vertical;outline:none;border-radius:4px}
+textarea:focus{box-shadow:0 0 10px #00ffaa55}
+button{margin-top:10px;padding:12px 22px;background:#00ffaa;color:#000;border:none;font-weight:bold;cursor:pointer;margin-right:8px;font-family:'Courier New',monospace;font-size:13px;border-radius:4px;transition:.2s}
+button:hover{transform:scale(1.05);box-shadow:0 0 15px #00ffaa66}
+.purple{background:#cc00ff;color:#fff}
+.red{background:#ff3333;color:#fff}
+.orange{background:#ff9900;color:#000}
+.info{margin-top:15px;padding:12px;background:#0a0a0a;border:1px solid #333;font-size:12px;color:#0ff;word-break:break-all;border-radius:4px}
+.tag{display:inline-block;padding:5px 12px;background:#00ffaa22;border:1px solid #00ffaa;color:#00ffaa;margin:3px;font-size:12px;border-radius:15px}
+.tag a{cursor:pointer;color:#ff5555;margin-left:6px;font-weight:bold}
+input{background:#0a0a0a;border:1px solid #00ffaa;color:#0f0;padding:9px 12px;font-family:'Courier New',monospace;outline:none;width:220px;border-radius:4px}
+.step{background:#001a11;border-left:3px solid #00ffaa;padding:12px;margin:10px 0;font-size:13px;color:#aaffcc}
+.warn{background:#1a0f00;border-left:3px solid #ff9900;padding:12px;margin:10px 0;font-size:13px;color:#ffcc88}
+</style>
+</head>
+<body>
+
+<div class="admin" id="panel">
+    <h2>👑 SKEITIKADMIN — SCRIPT HUB</h2>
+
+    <h3>🛡️ WHITELIST</h3>
+    <div id="wlDisplay"></div>
+    <div style="margin-top:10px">
+        <input id="addNick" placeholder="Ник игрока Roblox..." onkeypress="if(event.key==='Enter')addNick()">
+        <button onclick="addNick()" style="padding:9px 15px;margin-top:0">➕ Добавить</button>
+    </div>
+
+    <h3 style="margin-top:25px">📝 РЕДАКТОР СКРИПТА</h3>
+    <textarea id="code" spellcheck="false"></textarea>
+    <br>
+    <button onclick="generate()">⚡ Сгенерировать финальный код</button>
+    <button class="purple" onclick="copyLS()">📋 Копировать Loadstring</button>
+    <button class="red" onclick="closePanel()">✕ Закрыть</button>
+
+    <div class="info" id="lsBox"></div>
+
+    <h3 style="margin-top:25px">🔥 ГОТОВЫЙ КОД (скопируй в script.lua)</h3>
+    <div class="warn">
+        ⚠️ Скопируй код ниже → зайди на GitHub → открой файл <b>script.lua</b> → нажми ✏️ → замени всё содержимое → Commit changes
+    </div>
+    <textarea id="finalCode" readonly style="height:280px;background:#0a0a0a;color:#ff9900;border-color:#ff9900"></textarea>
+    <button class="orange" onclick="copyFinal()">📋 Копировать готовый код</button>
+    <button onclick="openGitHub()" style="background:#5555ff;color:#fff">🔗 Открыть GitHub</button>
+</div>
+
+<script>
+// ============ КОНФИГ ============
+const GITHUB_USER = "dania67ramangaliev-crypto";
+const REPO = "hub";
+const SCRIPT_FILE = "script.lua";
+
+// ============ ДАННЫЕ ============
+let whitelist = JSON.parse(localStorage.getItem('wl') || '["SkeitikAdmin"]');
+let scriptCode = localStorage.getItem('sc') || defaultScript();
+
+function defaultScript(){
+return `-- ЗДЕСЬ ТВОЙ СКРИПТ (whitelist уже проверен выше)
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+humanoid.WalkSpeed = 40
+print("[Hub] WalkSpeed = 40 for " .. player.Name)
+
+-- Автовосстановление после респавна
+player.CharacterAdded:Connect(function(char)
+    local h = char:WaitForChild("Humanoid")
+    h.WalkSpeed = 40
+end)`;
+}
+
+// ============ СЕКРЕТНАЯ КОМБИНАЦИЯ ============
+let pressed={}, isOpen=false;
+document.addEventListener('keydown',e=>{
+    pressed[e.key.toLowerCase()]=true;
+    if(pressed['a']&&pressed['o'])openPanel();
+});
+document.addEventListener('keyup',e=>{pressed[e.key.toLowerCase()]=false});
+
+function openPanel(){
+    if(isOpen)return; isOpen=true;
+    document.getElementById('panel').style.display='block';
+    document.getElementById('code').value=scriptCode;
+    updateWL();
+    updateLS();
+    generate();
+}
+function closePanel(){
+    isOpen=false;
+    document.getElementById('panel').style.display='none';
+}
+
+// ============ WHITELIST ============
+function updateWL(){
+    document.getElementById('wlDisplay').innerHTML=
+        whitelist.map(n=>{
+            const isOwner = n==='SkeitikAdmin';
+            return `<span class="tag">${isOwner?'👑 ':''}${n}${!isOwner?` <a onclick="delNick('${n}')">✕</a>`:''}</span>`;
+        }).join('');
+}
+function addNick(){
+    const i=document.getElementById('addNick');
+    const n=i.value.trim();
+    if(!n)return;
+    if(whitelist.map(v=>v.toLowerCase()).includes(n.toLowerCase()))return alert('❌ Этот ник уже есть!');
+    whitelist.push(n);
+    save();
+    i.value='';
+    updateWL();
+    generate();
+}
+function delNick(n){
+    if(n==='SkeitikAdmin')return alert('👑 Нельзя удалить владельца!');
+    whitelist=whitelist.filter(v=>v!==n);
+    save();
+    updateWL();
+    generate();
+}
+function save(){
+    localStorage.setItem('wl',JSON.stringify(whitelist));
+    localStorage.setItem('sc',document.getElementById('code').value);
+}
+
+// ============ ГЕНЕРАЦИЯ ============
+function generate(){
+    scriptCode=document.getElementById('code').value;
+    save();
+    const wl='{\n'+whitelist.map(v=>`    "${v}"`).join(',\n')+'\n}';
+    const full=`-- ═══════════════════════════════════════
+-- 👑 SKEITIKADMIN HUB — Auto Generated
+-- ═══════════════════════════════════════
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local whitelist = ${wl}
+
+-- Проверка доступа
+local allowed = false
+for _, name in ipairs(whitelist) do
+    if player.Name:lower() == name:lower() then
+        allowed = true
+        break
+    end
+end
+
+if not allowed then
+    warn("[Hub] ❌ Access Denied: " .. player.Name)
+    return
+end
+
+print("[Hub] ✅ Welcome " .. player.Name)
+
+-- ═══════════════════════════════════════
+-- ПОЛЬЗОВАТЕЛЬСКИЙ СКРИПТ
+-- ═══════════════════════════════════════
+
+${scriptCode}`;
+    document.getElementById('finalCode').value=full;
+}
+
+function copyFinal(){
+    document.getElementById('finalCode').select();
+    document.execCommand('copy');
+    alert('📋 Готовый код скопирован!\n\nТеперь вставь его в script.lua на GitHub');
+}
+
+// ============ LOADSTRING ============
+function updateLS(){
+    const url=`https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${SCRIPT_FILE}`;
+    document.getElementById('lsBox').innerHTML=
+        '<b style="color:#00ffaa">🔗 Loadstring для Roblox:</b><br><br>' +
+        'loadstring(game:HttpGet("' + url + '"))()';
+}
+function copyLS(){
+    const url=`https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${SCRIPT_FILE}`;
+    const ls='loadstring(game:HttpGet("'+url+'"))()';
+    navigator.clipboard.writeText(ls);
+    alert('📋 Loadstring скопирован!\n\n'+ls);
+}
+function openGitHub(){
+    window.open(`https://github.com/${GITHUB_USER}/${REPO}/edit/main/${SCRIPT_FILE}`,'_blank');
+}
+
+// ============ ЗАЩИТА ============
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+    if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&'IJCijc'.includes(e.key))||(e.ctrlKey&&'UuSs'.includes(e.key)))e.preventDefault();
+});
+</script>
+</body>
+</html>
